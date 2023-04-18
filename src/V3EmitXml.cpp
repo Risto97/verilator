@@ -319,6 +319,53 @@ public:
     ~EmitXmlFileVisitor() override = default;
 };
 
+// Visitor for Begin blocks
+// Visiting every child note of begin block and prepend instance name with begin block name
+class BeginGenerateVisitor final : public VNVisitorConst {
+private:
+    // MEMBERS
+    std::unordered_map<std::string, std::string> var_map;
+    std::string b_hier;
+
+    // VISITORS
+
+    // For all other nodes there is nothing to do so just iterateChildren
+    void visit(AstNode* nodep) override { iterateChildrenConst(nodep); }
+
+    void visit(AstBegin* nodep) override {
+        // Iterate through child nodes of BEGIN node.
+        // Prepend name of the BEGIN node to the CELL and BEGIN child nodes
+        AstNode* childp = nodep->op1p();
+        if (!nodep->unnamed()) b_hier = nodep->name() + ".";
+
+        while (childp) {
+            if (dynamic_cast<AstCell*>(childp) || dynamic_cast<AstBegin*>(childp)) {
+                childp->name(b_hier + childp->name());
+            }
+            childp = childp->nextp();
+        }
+        iterateChildrenConst(nodep);
+    }
+
+    // For Var nodes, keep track of their scope in a map
+    // This is neccessary when varref is referencing a upper scope var
+    void visit(AstVar* nodep) override {
+        var_map.insert(std::pair<std::string, std::string>(nodep->name(), b_hier));
+        nodep->name(b_hier + nodep->name());
+    }
+
+    // Retreive correct Var scope from var_map for given varref
+    void visit(AstVarRef* nodep) override { nodep->name(var_map[nodep->name()] + nodep->name()); }
+
+public:
+    // CONSTRUCTORS
+    BeginGenerateVisitor(AstBegin* nodep) { 
+        nodep->accept(*this);
+        b_hier = "";
+    }
+    ~BeginGenerateVisitor() override = default;
+};
+
 //######################################################################
 // List of module files xml visitor
 
@@ -339,6 +386,7 @@ private:
     void visit(AstNodeModule* nodep) override {
         // Only list modules and interfaces
         // Assumes modules and interfaces list is already sorted level wise
+        iterateChildrenConst(nodep);
         if (!nodep->dead() && (VN_IS(nodep, Module) || VN_IS(nodep, Iface))
             && m_modulesCovered.insert(nodep->fileline()->filename()).second) {
             m_nodeModules.push_front(nodep->fileline());
@@ -347,6 +395,11 @@ private:
     //-----
     void visit(AstNode*) override {
         // All modules are present at root so no need to iterate on children
+    }
+
+    void visit(AstBegin* nodep) override {
+        // Create a visitor for every Begin node
+        const BeginGenerateVisitor beginVisitor(nodep); 
     }
 
 public:
