@@ -28,6 +28,36 @@
 
 VL_DEFINE_DEBUG_FUNCTIONS;
 
+//#################################################################
+// Visitor that creates a maping of Var-s to hierarchy begin blocks
+
+class CreateVarMapVisitor final : public VNVisitorConst {
+public:
+    std::unordered_map<AstVar*, std::string> var_hiers;
+
+private:
+    std::string
+        m_hier;  // Hierarchy scoped from module, each named begin block adds a level of hierarchy
+
+    void visit(AstNode* nodep) override { iterateChildrenConst(nodep); }
+    void visit(AstBegin* nodep) override {
+        // Append to hierarchy string for every Begin block
+        VL_RESTORER(m_hier);
+        if (nodep->name() != "") m_hier += nodep->name() + ".";
+        iterateChildrenConst(nodep);
+    }
+
+    void visit(AstVar* nodep) override {
+        // For every AstVar node create a map to the current hierarchy level
+        var_hiers.insert(std::pair<AstVar*, std::string>(nodep, m_hier));
+    }
+
+public:
+    // CONSTRUCTORS
+    CreateVarMapVisitor(AstNodeModule* nodep) { iterateConst(nodep); }
+    ~CreateVarMapVisitor() override = default;
+};
+
 // ######################################################################
 //  Emit statements and expressions
 
@@ -38,6 +68,8 @@ class EmitXmlFileVisitor final : public VNVisitorConst {
 
     // MEMBERS
     V3OutFile* const m_ofp;
+    std::string m_hier;  // Hier scoped from module, each begin block adds a level of hierarchy
+    CreateVarMapVisitor* m_varMapVisitorp;
     uint64_t m_id = 0;
 
     // METHODS
@@ -71,7 +103,7 @@ class EmitXmlFileVisitor final : public VNVisitorConst {
         }
         if (nodep->name() != "") {
             puts(" name=");
-            putsQuoted(nodep->prettyName());
+            putsQuoted(m_hier + nodep->prettyName());
         }
         if (nodep->tag() != "") {
             puts(" tag=");
@@ -176,6 +208,9 @@ class EmitXmlFileVisitor final : public VNVisitorConst {
         puts("</initarray>\n");
     }
     void visit(AstNodeModule* nodep) override {
+        CreateVarMapVisitor varMapVisitor(nodep);
+        m_varMapVisitorp = &varMapVisitor;
+        m_hier = "";  // Reset hierarchy for each module
         outputTag(nodep, "");
         puts(" origName=");
         putsQuoted(nodep->origName());
@@ -183,6 +218,27 @@ class EmitXmlFileVisitor final : public VNVisitorConst {
             || nodep->level() == 2)  // ==2 because we don't add wrapper when in XML mode
             puts(" topModule=\"1\"");  // IEEE vpiTopModule
         if (nodep->modPublic()) puts(" public=\"true\"");
+        outputChildrenEnd(nodep, "");
+
+        m_varMapVisitorp = nullptr;
+    }
+    void visit(AstVarRef* nodep) override {
+        // VarRef has to find a Var hierarchy using the varMap from CreateVarMapVisitor
+        VL_RESTORER(m_hier);
+        if (m_varMapVisitorp != nullptr) m_hier = m_varMapVisitorp->var_hiers[nodep->varp()];
+        outputTag(nodep, "");
+        outputChildrenEnd(nodep, "");
+    }
+    void visit(AstBegin* nodep) override {
+        VL_RESTORER(m_hier);
+        outputTag(nodep, "");
+        if (nodep->name() != "") m_hier += nodep->name() + ".";
+        outputChildrenEnd(nodep, "");
+    }
+    void visit(AstConst* nodep) override {
+        VL_RESTORER(m_hier);
+        m_hier = "";
+        outputTag(nodep, "");
         outputChildrenEnd(nodep, "");
     }
     void visit(AstVar* nodep) override {
@@ -373,7 +429,10 @@ class HierCellsXmlVisitor final : public VNVisitorConst {
 private:
     // MEMBERS
     std::ostream& m_os;
+    // m_hier is current full hierarchy including parent cells
     std::string m_hier;
+    // m_local_hier is current hierarchy based from current module
+    std::string m_local_hier; 
     bool m_hasChildren = false;
 
     // METHODS
@@ -403,13 +462,15 @@ private:
     void visit(AstCell* nodep) override {
         if (nodep->modp()->dead()) return;
         if (!m_hasChildren) m_os << ">\n";
-        m_os << "<cell " << nodep->fileline()->xmlDetailedLocation() << " name=\"" << nodep->name()
-             << "\""
+        m_os << "<cell " << nodep->fileline()->xmlDetailedLocation() << " name=\""
+             << m_local_hier + nodep->name() << "\""
              << " submodname=\"" << nodep->modName() << "\""
-             << " hier=\"" << m_hier + nodep->name() << "\"";
+             << " hier=\"" << m_hier + m_local_hier + nodep->name() << "\"";
         const std::string hier = m_hier;
-        m_hier += nodep->name() + ".";
+        m_hier += m_local_hier + nodep->name() + ".";
         m_hasChildren = false;
+        VL_RESTORER(m_local_hier);
+        m_local_hier = "";
         iterateChildrenConst(nodep->modp());
         if (m_hasChildren) {
             m_os << "</cell>\n";
@@ -418,6 +479,12 @@ private:
         }
         m_hier = hier;
         m_hasChildren = true;
+    }
+
+    void visit(AstBegin* nodep) override {
+        VL_RESTORER(m_local_hier);
+        if (nodep->name() != "") m_local_hier += nodep->name() + ".";
+        iterateChildrenConst(nodep);
     }
     //-----
     void visit(AstNode* nodep) override { iterateChildrenConst(nodep); }

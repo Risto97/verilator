@@ -1,0 +1,35 @@
+<?xml version="1.0" ?>
+<!-- DESCRIPTION: Verilator output: XML representation of netlist -->
+<verilator_xml>
+  <files>
+    <file id="a" filename="&lt;built-in&gt;" language="1800-2017"/>
+    <file id="b" filename="&lt;command-line&gt;" language="1800-2017"/>
+    <file id="c" filename="input.vc" language="1800-2017"/>
+    <file id="d" filename="t/t_xml_for_generate.v" language="1800-2017"/>
+  </files>
+  <module_files>
+    <file id="d" filename="t/t_xml_for_generate.v" language="1800-2017"/>
+  </module_files>
+  <cells>
+    <cell loc="d,4,8,4,9" name="t" submodname="t" hier="t">
+      <cell loc="d,9,20,9,28" name="for_gen__BRA__0__KET__.submod_i" submodname="submod" hier="t.for_gen__BRA__0__KET__.submod_i"/>
+      <cell loc="d,9,20,9,28" name="for_gen__BRA__1__KET__.submod_i" submodname="submod" hier="t.for_gen__BRA__1__KET__.submod_i"/>
+    </cell>
+  </cells>
+  <netlist>
+    <module loc="d,4,8,4,9" name="t" origName="t" topModule="1">
+      <var loc="d,6,12,6,13" name="i" dtype_id="1" vartype="integer" origName="i"/>
+      <begin loc="d,8,9,8,12" name="for_gen"/>
+      <begin loc="d,9,20,9,28" name="for_gen[0]">
+        <instance loc="d,9,20,9,28" name="for_gen__BRA__0__KET__.submod_i" defName="submod" origName="submod_i"/>
+      </begin>
+      <begin loc="d,9,20,9,28" name="for_gen[1]">
+        <instance loc="d,9,20,9,28" name="for_gen__BRA__1__KET__.submod_i" defName="submod" origName="submod_i"/>
+      </begin>
+    </module>
+    <module loc="d,1,8,1,14" name="submod" origName="submod"/>
+    <typetable loc="a,0,0,0,0">
+      <basicdtype loc="d,6,12,6,13" id="1" name="integer" left="31" right="0" signed="true"/>
+    </typetable>
+  </netlist>
+</verilator_xml>

@@ -1,0 +1,42 @@
+<?xml version="1.0" ?>
+<!-- DESCRIPTION: Verilator output: XML representation of netlist -->
+<verilator_xml>
+  <files>
+    <file id="a" filename="&lt;built-in&gt;" language="1800-2017"/>
+    <file id="b" filename="&lt;command-line&gt;" language="1800-2017"/>
+    <file id="c" filename="input.vc" language="1800-2017"/>
+    <file id="d" filename="t/t_xml_varref_complex.v" language="1800-2017"/>
+  </files>
+  <module_files>
+    <file id="d" filename="t/t_xml_varref_complex.v" language="1800-2017"/>
+  </module_files>
+  <cells>
+    <cell loc="d,1,8,1,9" name="t" submodname="t" hier="t"/>
+  </cells>
+  <netlist>
+    <module loc="d,1,8,1,9" name="t" origName="t">
+      <begin loc="d,3,19,3,27" name="block_l1">
+        <begin loc="d,4,23,4,31" name="block_l1.block_l2">
+          <var loc="d,6,18,6,25" name="block_l1.block_l2.wire_l2" dtype_id="1" vartype="logic" origName="wire_l2">
+            <const loc="d,5,60,5,61" name="1&apos;h0" dtype_id="1"/>
+          </var>
+        </begin>
+        <var loc="d,8,14,8,21" name="block_l1.wire_l1" dtype_id="1" vartype="logic" origName="wire_l1"/>
+      </begin>
+      <var loc="d,11,10,11,17" name="wire_l0" dtype_id="1" vartype="logic" origName="wire_l0"/>
+      <var loc="d,12,16,12,24" name="param_l0" dtype_id="2" vartype="logic" origName="param_l0" localparam="true">
+        <const loc="d,12,27,12,30" name="32&apos;sh64" dtype_id="2"/>
+      </var>
+      <initial loc="d,5,28,5,29">
+        <assign loc="d,5,28,5,29" dtype_id="1">
+          <const loc="d,5,60,5,61" name="1&apos;h0" dtype_id="1"/>
+          <varref loc="d,5,20,5,27" name="block_l1.block_l2.wire_l2" dtype_id="1"/>
+        </assign>
+      </initial>
+    </module>
+    <typetable loc="a,0,0,0,0">
+      <basicdtype loc="d,12,27,12,30" id="2" name="logic" left="31" right="0" signed="true"/>
+      <basicdtype loc="d,11,10,11,17" id="1" name="logic"/>
+    </typetable>
+  </netlist>
+</verilator_xml>
