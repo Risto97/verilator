@@ -234,6 +234,13 @@ private:
         operandTriop(nodep);
         setClean(nodep, nodep->cleanOut());
     }
+    void visit(AstStructSel* nodep) override {
+        iterateChildren(nodep);
+        if (VN_CAST(nodep->dtypep(), StructDType))
+            setClean(nodep, true);
+        else
+            setClean(nodep, false);
+    }
     void visit(AstUCFunc* nodep) override {
         iterateChildren(nodep);
         computeCppWidth(nodep);
