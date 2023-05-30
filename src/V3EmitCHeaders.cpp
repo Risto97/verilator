@@ -17,6 +17,7 @@
 #include "config_build.h"
 #include "verilatedos.h"
 
+#include "V3Ast.h"
 #include "V3EmitC.h"
 #include "V3EmitCConstInit.h"
 #include "V3Global.h"
@@ -216,6 +217,33 @@ class EmitCHeader final : public EmitCConstInit {
             }
         }
     }
+    std::vector<std::vector<uint32_t>> unrollArrayDimensions(AstUnpackArrayDType* arraydp) const {
+        std::vector<uint32_t> array_dims;
+        const auto dims = arraydp->unpackDimensions();
+
+        for (auto a = dims.begin(); a != dims.end(); a++)
+            array_dims.push_back((*a)->elementsConst());
+
+        std::vector<uint32_t> curr_dim(array_dims.size(), 0);
+        std::vector<std::vector<uint32_t>> unrolled_dims;
+
+        bool finished = false;
+        while (!finished) {
+            unrolled_dims.push_back(curr_dim);
+
+            for (int i = array_dims.size() - 1; i >= 0; --i) {
+                curr_dim[i]++;
+
+                if (curr_dim[i] >= array_dims[i])
+                    curr_dim[i] = 0;
+                else
+                    break;
+            }
+
+            if (curr_dim == std::vector<uint32_t>(array_dims.size(), 0)) { finished = true; }
+        }
+        return unrolled_dims;
+    }
     void emitStructDecl(const AstNodeModule* modp, AstNodeUOrStructDType* sdtypep,
                         std::set<AstNodeUOrStructDType*>& emitted) {
         if (emitted.count(sdtypep) > 0) return;
@@ -246,10 +274,13 @@ class EmitCHeader final : public EmitCConstInit {
             if (itemp != sdtypep->membersp()) puts("\n    && ");
             if (AstUnpackArrayDType* const adtypep
                 = VN_CAST(itemp->subDTypep(), UnpackArrayDType)) {
-                for (uint32_t i = 0; i < adtypep->arrayUnpackedElements(); i++) {
-                    if (i != 0) puts("\n    && ");
-                    puts(itemp->nameProtect() + "[" + std::to_string(i) + "U] == " + "rhs."
-                         + itemp->nameProtect() + "[" + std::to_string(i) + "U]");
+                auto dims = unrollArrayDimensions(adtypep);
+                for (auto dimp = dims.begin(); dimp != dims.end(); dimp++) {
+                    if (dimp != dims.begin()) puts("\n    && ");
+                    std::string indices{};
+                    for (uint32_t val : (*dimp)) indices += "[" + std::to_string(val) + "U]";
+                    puts(itemp->nameProtect() + indices + " == " + "rhs." + itemp->nameProtect()
+                         + indices);
                 }
             } else {
                 puts(itemp->nameProtect() + " == " + "rhs." + itemp->nameProtect());
